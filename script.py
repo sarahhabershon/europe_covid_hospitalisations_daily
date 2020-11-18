@@ -9,10 +9,8 @@ ecjrc_load = pd.read_csv("https://raw.githubusercontent.com/ec-jrc/COVID-19/mast
 ecjrc_load = ecjrc_load.drop(["lat", "lon"], axis = 1)
 ecjrc_load = ecjrc_load.rename(columns={'NUTS': 'nuts'})
 
+#remove countries where there is no hospitalisation data
 ecjrc_load['sum'] = ecjrc_load['Hospitalized'].groupby(ecjrc_load['nuts']).transform('sum')
-
-
-#remove UK to avoid duplication
 ecjrc_load = ecjrc_load[ecjrc_load["sum"] > 0]
 
 #download latest hospitalisation figures as csv: https://coronavirus.data.gov.uk/details/healthcare, replace these files
@@ -27,6 +25,7 @@ uk_all.loc[uk_all['CountryName'] == "Wales", "nuts"] = "UKL"
 uk_all.loc[uk_all['CountryName'] == "Northern Ireland", "nuts"] = "UKN"
 uk_all.loc[uk_all['CountryName'] == "United Kingdom", "nuts"] = "UK"
 uk_all.loc[uk_all['CountryName'] == "England", "nuts"] = "UKXYZ"
+
 #add UK to the dataframe
 ecjrc_load = ecjrc_load.append(uk_all)
 
