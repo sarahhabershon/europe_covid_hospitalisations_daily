@@ -40,8 +40,6 @@ matched = pd.merge(ecjrc_load,
 matched["rolling_hosp"] = matched.groupby("nuts")['Hospitalized'].rolling(7).mean().reset_index(0,drop=True)
 matched["rolling_hosp_per_100000"] = 100000*(matched["rolling_hosp"]/matched["population"])
 
-#remove rows for countries that don't have any hospitalisation data
-
 
 #remove null values
 matched = matched.dropna(axis=0, subset=["rolling_hosp"])
