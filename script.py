@@ -9,14 +9,17 @@ ecjrc_load = pd.read_csv("https://raw.githubusercontent.com/ec-jrc/COVID-19/mast
 ecjrc_load = ecjrc_load.drop(["lat", "lon"], axis = 1)
 ecjrc_load = ecjrc_load.rename(columns={'NUTS': 'nuts'})
 
-#remove UK to avoid duplication
-ecjrc_load = ecjrc_load[ecjrc_load.nuts != "UK"]
+ecjrc_load['sum'] = ecjrc_load['Hospitalized'].groupby(ecjrc_load['nuts']).transform('sum')
 
-#download latest hospitalisation figures as csv: https://coronavirus.data.gov.uk/details/healthcare
+
+#remove UK to avoid duplication
+ecjrc_load = ecjrc_load[ecjrc_load["sum"] > 0]
+
+#download latest hospitalisation figures as csv: https://coronavirus.data.gov.uk/details/healthcare, replace these files
 uk_subt_load = pd.read_csv("uk_by_nation.csv", parse_dates = ["date"])
 uk_nat_load = pd.read_csv("uk_total.csv", parse_dates = ["date"])
 
-#add NUTS codes for UK - note that there is no nuts code for England; I have added that the population table as "UKXYZ"
+#add NUTS codes for UK - note that there is no nuts code for England; I have added that the population table as "UKXYZ" with the latest ONS population figure for England
 uk_all = uk_subt_load.append(uk_nat_load)
 uk_all = uk_all.rename(columns={"areaName": "CountryName", "date": "Date", "hospitalCases": "Hospitalized"}, errors="raise")
 uk_all.loc[uk_all['CountryName'] == "Scotland", "nuts"] = "UKM"
@@ -24,8 +27,6 @@ uk_all.loc[uk_all['CountryName'] == "Wales", "nuts"] = "UKL"
 uk_all.loc[uk_all['CountryName'] == "Northern Ireland", "nuts"] = "UKN"
 uk_all.loc[uk_all['CountryName'] == "United Kingdom", "nuts"] = "UK"
 uk_all.loc[uk_all['CountryName'] == "England", "nuts"] = "UKXYZ"
-uk_all.to_csv("test.csv")
-
 #add UK to the dataframe
 ecjrc_load = ecjrc_load.append(uk_all)
 
@@ -38,6 +39,9 @@ matched = pd.merge(ecjrc_load,
 #get the rolling average
 matched["rolling_hosp"] = matched.groupby("nuts")['Hospitalized'].rolling(7).mean().reset_index(0,drop=True)
 matched["rolling_hosp_per_100000"] = 100000*(matched["rolling_hosp"]/matched["population"])
+
+#remove rows for countries that don't have any hospitalisation data
+
 
 #remove null values
 matched = matched.dropna(axis=0, subset=["rolling_hosp"])
