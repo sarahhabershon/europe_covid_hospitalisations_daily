@@ -1,5 +1,4 @@
 import pandas as pd 
-import matplotlib.pyplot as plt
 
 #read in population and codes
 pop = pd.read_csv("Europop.csv")
