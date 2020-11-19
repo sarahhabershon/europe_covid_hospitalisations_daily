@@ -1,3 +1,4 @@
+from requests import get
 import pandas as pd 
 
 #read in population and codes
@@ -12,13 +13,40 @@ ecjrc_load = ecjrc_load.rename(columns={'NUTS': 'nuts'})
 ecjrc_load['sum'] = ecjrc_load['Hospitalized'].groupby(ecjrc_load['nuts']).transform('sum')
 ecjrc_load = ecjrc_load[ecjrc_load["sum"] > 0]
 
-#download latest hospitalisation figures as csv: https://coronavirus.data.gov.uk/details/healthcare, replace these files
-uk_subt_load = pd.read_csv("uk_by_nation.csv", parse_dates = ["date"])
-uk_nat_load = pd.read_csv("uk_total.csv", parse_dates = ["date"])
+#pull daily hospitalisation figures for UK
+uk = ["overview", "United Kingdom"]
+nations = ["England", "Northern Ireland", "Wales", "Scotland"]
+
+def get_data(areatype, nation):
+    endpoint = (
+    'https://api.coronavirus.data.gov.uk/v1/data?'
+    'filters=areaType=' + areatype + ';areaName=' + nation + '&'
+    'structure={"date":"date","Hospitalized":"hospitalCases"}'
+)
+
+    response = get(endpoint, timeout=10)
+    if response.status_code >= 400:
+        raise RuntimeError(f'Request failed: { response.text }')
+        
+    return response.json()
+
+u_k = get_data(uk[0], uk[1])["data"]
+uk_all = pd.DataFrame(u_k)
+uk_all["CountryName"] = uk[1]
+uk_all = uk_all.rename(columns={'date': 'Date'})
+
+
+for nation in nations:
+    print(nation)
+    areatype = "nation"
+    data = get_data(areatype, nation)
+    nation_data = data["data"]
+    df = pd.DataFrame(nation_data)
+    df["CountryName"] = nation
+    df = df.rename(columns={'date': 'Date'})
+    uk_all = uk_all.append(df)
 
 #add NUTS codes for UK - note that there is no nuts code for England; I have added that the population table as "UKXYZ" with the latest ONS population figure for England
-uk_all = uk_subt_load.append(uk_nat_load)
-uk_all = uk_all.rename(columns={"areaName": "CountryName", "date": "Date", "hospitalCases": "Hospitalized"}, errors="raise")
 uk_all.loc[uk_all['CountryName'] == "Scotland", "nuts"] = "UKM"
 uk_all.loc[uk_all['CountryName'] == "Wales", "nuts"] = "UKL"
 uk_all.loc[uk_all['CountryName'] == "Northern Ireland", "nuts"] = "UKN"
